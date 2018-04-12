@@ -3,6 +3,7 @@
 scanMess: .asciiz "Enter the number of rows: "
 tab: .asciiz "\t"
 newLine: .asciiz "\n"
+abc: .byte 'x'
 
 .text:
 
