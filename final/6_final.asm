@@ -4,7 +4,8 @@
 CharPtr: .word 0
 BytePtr: .word 0
 WordPtr: .word 0
-2ndCharPtr: .word 0
+secondCharPtr: .word 0
+ArrayPtr: .word 0
 
 # mgs
 
@@ -25,7 +26,7 @@ ByteResult: .asciiz "Result: *BytePtr = "
 #
 WordSizeScanMess: .asciiz "\n\nSize for WordPtr: "
 WordScanMess: .asciiz "Enter a string for WordPtr: "
-WordResult: .asciiz "WordPtr Result: "
+WordResult: .asciiz "\nResult (*WordPtr): "
 
 # opt2
 CharPtrAddress: .asciiz "\n&CharPtr = "
@@ -34,16 +35,19 @@ WordPtrAddress: .asciiz "\n&WordPtr = "
 
 # opt3
 
-2ndCharSizeScanMess: .asciiz "\nEnter size of the 2ndCharPtr: "
-
-
+secondCharSizeScanMess: .asciiz "\nEnter size of the 2ndCharPtr: "
+copyResult: .asciiz "Result (*2nCharPtr): "
 
 # opt4
 allocatedSizeMess: .asciiz "\nThe total size of allocated space: "
 bytes: .asciiz " (bytes)\n"
 
 # opt5
-
+ArrayMenu: .asciiz "-----------------------\n 1. set Array[i][j]\n 2. get Array[i][j]\n 0. Quit\nChoose one option: "
+ArraySizeScanMess: .asciiz "(Word) Array[x][y]:\n x = "
+yScanMess: .asciiz " y = "
+xScanMess: .asciiz " x = "
+valueScanMess: .asciiz " value = "
 
 
 .kdata
@@ -86,6 +90,7 @@ syscall
 addi $v0, $0, 5
 syscall				# return value passing in v0
 xor $a1, $v0, $0		# a1 = v0
+xor $s7, $v0, $0		# s7 = Size of CharPtr (for opt3)
 
 CharMalloc:
 la $a0, CharPtr			
@@ -127,7 +132,6 @@ j PrintCharELement
 
 
 # Scan size for BytePtr
-
 ByteMalloc:
 addi $v0, $0, 4
 la $a0, ByteSizeScanMess
@@ -171,7 +175,6 @@ addi $v0, $0, 1
 xor $a0, $v1, $0
 syscall
 
-
 WordMalloc:
 
 # scan size
@@ -208,26 +211,6 @@ addi $v0, $0, 4
 xor $a0, $s0, $0
 syscall
 
-
-
-
-#la $a0, BytePtr
-#addi $a1, $0, 6
-#addi $a2, $0, 1
-#jal malloc
-#nop
-
-#la $a0, WordPtr
-#addi $a1, $0, 5
-#addi $a2, $0, 4
-#jal malloc
-#nop
-
-
-
-
-
-
 j menu
 
 #
@@ -243,9 +226,7 @@ addi $v0, $0, 34
 xor $a0, $v1, $0
 syscall
 
-
 # &BytePtr
-
 addi $v0, $0, 4
 la $a0, BytePtrAddress
 syscall
@@ -255,9 +236,7 @@ addi $v0, $0, 34
 xor $a0, $v1, $0
 syscall
 
-
 # &WordPtr
-
 addi $v0, $0, 4
 la $a0, WordPtrAddress
 syscall
@@ -271,6 +250,44 @@ j menu
 
 opt3:
 
+# Scan Size of 2ndCharPtr
+addi $v0, $0, 4
+la $a0, secondCharSizeScanMess
+syscall
+
+addi $v0, $0, 5
+syscall
+
+la $a0, secondCharPtr
+xor $a1, $v0, $0		# a1 = size2;
+add $a2, $0, 1
+jal malloc
+nop
+
+slt $t0, $a1, $s7		
+bne $t0, $0, lessThan		# if size2 < size1, lengthOfCopy = Size2 else lengthOfCopy = Size1
+xor $a2, $s7, $0
+la $a1, CharPtr
+nop
+jal copy
+nop
+j print2ndCharPtr
+
+lessThan:
+xor $a2, $a1, $0
+la $a1, CharPtr
+nop
+jal copy
+
+print2ndCharPtr:
+
+addi $v0, $0, 4
+la $a0, copyResult
+syscall
+
+la $t0, secondCharPtr
+lw $a0, 0($t0)
+syscall
 
 j menu
 
@@ -294,16 +311,52 @@ j menu
 
 opt5:
 
+addi $v0, $0, 4
+la $a0, ArraySizeScanMess
+syscall
 
-j menu
+addi $v0, $0, 5
+syscall
+xor $t0, $v0, $v0		# t0 = x
+
+addi $v0, $0, 4
+la $a0, yScanMess
+syscall
+
+addi $v0, $0, 5
+syscall
+xor $t1, $v0, $v0		# t1 = y
+
+la $a0, ArrayPtr
+mul $a1, $t0, $t1
+addi $a2, $0, 4
+jal malloc
+nop
+xor $s0,$v0, $0			# s0 = address of Array
+
+arraymenu:
+addi $v0, $0, 4
+la $a0, ArrayMenu
+syscall
+
+addi $v0, $0, 5
+syscall
+beq $v0, $0, menu
+xor $a1, $t0, $0
+xor $a2, $t1, $0
+beq $v0, 1, setArray
+beq $v0, 2, getArray
+nop
+
+j arraymenu
 
 exit:
 addi $v0, $0, 10
 syscall
 
+## sub-functions
 
-#
-
+# opt1
 getCharPtrAddress:		
 la $v1, CharPtr
 jr $ra
@@ -318,7 +371,6 @@ getWordPtrAddress:
 la $v1, WordPtr
 jr $ra
 nop
-
 
 getByteElement:			# a0 = Ptr; a1 = ElementIndex; return $v1
 lw $t0, 0($a0)
@@ -336,8 +388,22 @@ sw $a2, 0($t0)
 jr $ra
 nop
 
+# opt3
+copy:				# a0 = DesPtr, a1 = SrcPtr, a2 = lengthOfCopy
+lw $s0, 0($a0)
+lw $s1, 0($a1)
+sub $a2, $a2, 1			
 
-#
+loop:				# s2 = counter
+add $t1, $s1, $s2
+lb $t2, 0($t1)
+add $t0, $s0, $s2
+sb $t2, 0($t0)
+bne $s2, $a2, loop
+addi $s2, $s2, 1
+jr $ra
+
+# opt4
 
 allocatedSize:			# return the allocated size in v1
 lw $v1, 0($t9)			# t9 = address Sys_TheTopOfFree
@@ -347,7 +413,72 @@ sub $v1, $v1, 4
 jr $ra
 nop
 
-#
+# opt5
+
+setArray:			# s0 = address of Array, a1 = x, a2 = y
+addi $v0, $0, 4
+la $a0, xScanMess	
+syscall
+
+addi $v0, $0, 5
+syscall
+xor $t0, $v0, $v0		# t0 = i
+
+addi $v0, $0, 4
+la $a0, yScanMess	
+syscall
+
+addi $v0, $0, 5
+syscall
+xor $t1, $v0, $v0		# t1 = j
+
+addi $v0, $0, 4
+la $a0, valueScanMess
+syscall
+
+addi $v0, $0, 5
+syscall
+xor $t2, $v0, $0		# t2 = value 
+
+mul $t3, $t0, $a2		
+add $t3, $t3, $t1
+mul $t3, $t3, $k0		# t3 = (i.y + j).4
+
+add $s1, $s0, $t3		# s1 = address to write
+
+sw $t2, 0($s1)
+
+jr $ra
+nop
+
+getArray:			# s0 = address of Array, a1 = x, a2 = y
+
+addi $v0, $0, 4
+la $a0, xScanMess	
+syscall
+
+addi $v0, $0, 5
+syscall
+xor $t0, $v0, $v0		# t0 = i
+
+addi $v0, $0, 4
+la $a0, yScanMess	
+syscall
+
+addi $v0, $0, 5
+syscall
+xor $t1, $v0, $v0		# t1 = j
+
+mul $t3, $t0, $a2		
+add $t3, $t3, $t1
+mul $t3, $t3, $k0		# t3 = (i.y + j).4
+
+add $s1, $s0, $t3		# s1 = address to read
+
+lw $a0, 0($s1)
+addi $v0, $0, 1
+syscall
+jr $ra
 
 SysInitMem:
 
