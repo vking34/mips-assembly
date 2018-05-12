@@ -43,7 +43,7 @@ allocatedSizeMess: .asciiz "\nThe total size of allocated space: "
 bytes: .asciiz " (bytes)\n"
 
 # opt5
-ArrayMenu: .asciiz "-----------------------\n 1. set Array[i][j]\n 2. get Array[i][j]\n 0. Quit\nChoose one option: "
+ArrayMenu: .asciiz "\n-----------------------\n 1. set Array[i][j]\n 2. get Array[i][j]\n 0. Quit\nChoose one option: "
 ArraySizeScanMess: .asciiz "(Word) Array[x][y]:\n x = "
 yScanMess: .asciiz " y = "
 xScanMess: .asciiz " x = "
@@ -58,8 +58,8 @@ Sys_MyFreeSpace: .word		# used to malloc a pointer starting from Sys_MyFreeSpace
 .text
 
 main:
-addi $k0, $k0, 4 		# k0 = 4 for checking Adddressalbe
-addi $k1, $k1, -1		# final static k1 = -1;
+addi $k0, $0, 4 		# k0 = 4 for checking Adddressalbe
+addi $k1, $0, -1		# final static k1 = -1;
 
 jal SysInitMem
 nop
@@ -129,7 +129,6 @@ addi $v0, $0, 11
 xor $a0, $v1, $0		# a0 = v1 (returned)
 syscall
 j PrintCharELement
-
 
 # Scan size for BytePtr
 ByteMalloc:
@@ -213,8 +212,7 @@ syscall
 
 j menu
 
-#
-opt2:
+opt2:	# Show pointer addresses
 
 # &CharPtr
 addi $v0, $0, 4
@@ -248,7 +246,7 @@ syscall
 
 j menu
 
-opt3:
+opt3:	# Copy 2 CharPtrs
 
 # Scan Size of 2ndCharPtr
 addi $v0, $0, 4
@@ -291,8 +289,7 @@ syscall
 
 j menu
 
-opt4:
-#Check Allocated Size
+opt4:	# Check Allocated Size
 
 addi $v0, $0, 4
 la $a0, allocatedSizeMess
@@ -309,7 +306,7 @@ syscall
 
 j menu
 
-opt5:
+opt5:	# Malloc a 2D array
 
 addi $v0, $0, 4
 la $a0, ArraySizeScanMess
@@ -317,7 +314,8 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t0, $v0, $v0		# t0 = x
+xor $t0, $v0, $0		# t0 = x
+addi $s4, $t0, 1		
 
 addi $v0, $0, 4
 la $a0, yScanMess
@@ -325,25 +323,26 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t1, $v0, $v0		# t1 = y
+xor $t1, $v0, $0		# t1 = y
+addi $s5, $t1, 1
 
 la $a0, ArrayPtr
-mul $a1, $t0, $t1
+mul $a1, $s4, $s5		
 addi $a2, $0, 4
 jal malloc
 nop
-xor $s0,$v0, $0			# s0 = address of Array
+xor $a1, $t0, $0
+xor $a2, $t1, $0
 
 arraymenu:
 addi $v0, $0, 4
 la $a0, ArrayMenu
 syscall
 
+la $a0, ArrayPtr
 addi $v0, $0, 5
 syscall
 beq $v0, $0, menu
-xor $a1, $t0, $0
-xor $a2, $t1, $0
 beq $v0, 1, setArray
 beq $v0, 2, getArray
 nop
@@ -415,14 +414,16 @@ nop
 
 # opt5
 
-setArray:			# s0 = address of Array, a1 = x, a2 = y
+setArray:			# a0 = address of Array, s4 = x, s5 = y
+lw $s0, 0($a0)
+
 addi $v0, $0, 4
 la $a0, xScanMess	
 syscall
 
 addi $v0, $0, 5
 syscall
-xor $t0, $v0, $v0		# t0 = i
+xor $t0, $v0, $0		# t0 = i
 
 addi $v0, $0, 4
 la $a0, yScanMess	
@@ -430,7 +431,7 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t1, $v0, $v0		# t1 = j
+xor $t1, $v0, $0		# t1 = j
 
 addi $v0, $0, 4
 la $a0, valueScanMess
@@ -440,18 +441,19 @@ addi $v0, $0, 5
 syscall
 xor $t2, $v0, $0		# t2 = value 
 
-mul $t3, $t0, $a2		
+mul $t3, $t0, $s5		
 add $t3, $t3, $t1
 mul $t3, $t3, $k0		# t3 = (i.y + j).4
 
 add $s1, $s0, $t3		# s1 = address to write
 
-sw $t2, 0($s1)
-
+sw $t2, 0($s1)			# Array[i][j] = t2
+nop
 jr $ra
 nop
 
-getArray:			# s0 = address of Array, a1 = x, a2 = y
+getArray:			# a0 = ArrayPtr, s4 = x, s5 = y
+lw $s0, 0($a0)
 
 addi $v0, $0, 4
 la $a0, xScanMess	
@@ -459,7 +461,7 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t0, $v0, $v0		# t0 = i
+xor $t0, $v0, $0		# t0 = i
 
 addi $v0, $0, 4
 la $a0, yScanMess	
@@ -467,29 +469,32 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t1, $v0, $v0		# t1 = j
+xor $t1, $v0, $0		# t1 = j
 
-mul $t3, $t0, $a2		
+mul $t3, $t0, $s5	
 add $t3, $t3, $t1
 mul $t3, $t3, $k0		# t3 = (i.y + j).4
 
 add $s1, $s0, $t3		# s1 = address to read
 
-lw $a0, 0($s1)
+la $a0, valueScanMess
+addi $v0, $0, 4
+syscall
+
+lw $a0, 0($s1)			# a0 = Array[i][j]
 addi $v0, $0, 1
 syscall
+
 jr $ra
 
 SysInitMem:
-
 la $t9, Sys_TheTopOfFree
 la $t7, Sys_MyFreeSpace
 sw $t7, 0($t9)
 jr $ra
 nop
 
-malloc:				# a0 = Ptr, a1 = Size, a2 = sizeof(Ptr); return the allocated address
-
+malloc:				# a0 = Ptr, a1 = Size, a2 = sizeof(Ptr); return the allocated address in v0
 la $t9, Sys_TheTopOfFree
 lw $t8, 0($t9)
 sw $t8, 0($a0)
