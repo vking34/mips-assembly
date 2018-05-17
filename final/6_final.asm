@@ -9,7 +9,8 @@ ArrayPtr: .word 0
 
 # mgs
 
-Menu: .asciiz "\n-----------------------------------------------------------\n--------------------------MENU-----------------------------\n-----------------------------------------------------------\n 1. Malloc then Check Value (*CharPtr, *BytePtr, *WordPtr)\n 2. Check addresses of pointers\n 3. Copy 2 CharPtrs\n 4. Show the total size of allocated space\n 5. Malloc a 2D Array\n 0. Quit\nChoose option: "
+Menu: .asciiz "\n-----------------------------------------------------------\n--------------------------MENU-----------------------------\n-----------------------------------------------------------\n 1. Malloc then Check Value (*CharPtr, *BytePtr, *WordPtr)\n 2. Check addresses of pointers\n 3. Copy 2 CharPtrs\n 4. Show the total size of allocated space\n 5. Malloc a 2D Array\n 0. Quit\nChoose one option: "
+segFaultMess: .asciiz "\nSegmentation Fault\n"
 
 # opt1
 CharSizeScanMess: .asciiz "\nEnter size for CharPtr: "
@@ -21,7 +22,7 @@ PrintElementChar: .asciiz "\nPrint the element (enter -1 to exit): "
 #
 ByteSizeScanMess: .asciiz "\nSize for BytePtr: "
 ByteScanMess: .asciiz "*BytePtr = "
-ByteResult: .asciiz "Result: *BytePtr = "
+ByteResult: .asciiz "\nResult: *BytePtr = "
 
 #
 WordSizeScanMess: .asciiz "\n\nSize for WordPtr: "
@@ -153,6 +154,7 @@ la $a0, ByteScanMess
 syscall
 
 addi $v0, $0, 5
+#addi $v0, $0, 12
 syscall
 
 la $a0, BytePtr
@@ -314,8 +316,7 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t0, $v0, $0		# t0 = x
-addi $s4, $t0, 1		
+xor $s4, $v0, $0		# t0 = x
 
 addi $v0, $0, 4
 la $a0, yScanMess
@@ -323,8 +324,7 @@ syscall
 
 addi $v0, $0, 5
 syscall
-xor $t1, $v0, $0		# t1 = y
-addi $s5, $t1, 1
+xor $s5, $v0, $0		# t1 = y
 
 la $a0, ArrayPtr
 mul $a1, $s4, $s5		
@@ -424,6 +424,7 @@ syscall
 addi $v0, $0, 5
 syscall
 xor $t0, $v0, $0		# t0 = i
+slt $t4, $t0, $s4
 
 addi $v0, $0, 4
 la $a0, yScanMess	
@@ -432,6 +433,10 @@ syscall
 addi $v0, $0, 5
 syscall
 xor $t1, $v0, $0		# t1 = j
+slt $t5, $t1, $s5
+
+beq $t4, $0, segmentationFault
+beq $t5, $0, segmentationFault
 
 addi $v0, $0, 4
 la $a0, valueScanMess
@@ -462,6 +467,7 @@ syscall
 addi $v0, $0, 5
 syscall
 xor $t0, $v0, $0		# t0 = i
+slt $t4, $t0, $s4
 
 addi $v0, $0, 4
 la $a0, yScanMess	
@@ -470,6 +476,10 @@ syscall
 addi $v0, $0, 5
 syscall
 xor $t1, $v0, $0		# t1 = j
+slt $t5, $t1, $s5
+
+beq $t4, $0,  segmentationFault
+beq $t5, $0, segmentationFault
 
 mul $t3, $t0, $s5	
 add $t3, $t3, $t1
@@ -486,6 +496,14 @@ addi $v0, $0, 1
 syscall
 
 jr $ra
+
+segmentationFault:
+
+addi $v0, $0, 4
+la $a0, segFaultMess
+syscall
+j arraymenu
+nop
 
 SysInitMem:
 la $t9, Sys_TheTopOfFree
